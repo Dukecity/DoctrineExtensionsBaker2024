@@ -10,6 +10,7 @@
 namespace Gedmo\ReferenceIntegrity;
 
 use Doctrine\Common\EventArgs;
+use Doctrine\Persistence\Event\LifecycleEventArgs;
 use Doctrine\Persistence\Event\LoadClassMetadataEventArgs;
 use Doctrine\Persistence\Mapping\ClassMetadata;
 use Doctrine\Persistence\ObjectManager;
@@ -56,13 +57,14 @@ class ReferenceIntegrityListener extends MappedEventSubscriber
      * Looks for referenced objects being removed
      * to nullify the relation or throw an exception
      *
+     * @param LifecycleEventArgs $args
+     *
      * @return void
      */
     public function preRemove(EventArgs $args)
     {
-        $ea = $this->getEventAdapter($args);
-        $om = $ea->getObjectManager();
-        $object = $ea->getObject();
+        $om = $args->getObjectManager();
+        $object = $args->getObject();
         $class = get_class($object);
         $meta = $om->getClassMetadata($class);
 

@@ -12,7 +12,9 @@ namespace Gedmo\Translatable;
 use Doctrine\Common\EventArgs;
 use Doctrine\ODM\MongoDB\DocumentManager;
 use Doctrine\ORM\ORMInvalidArgumentException;
+use Doctrine\Persistence\Event\LifecycleEventArgs;
 use Doctrine\Persistence\Event\LoadClassMetadataEventArgs;
+use Doctrine\Persistence\Event\ManagerEventArgs;
 use Doctrine\Persistence\Mapping\ClassMetadata;
 use Doctrine\Persistence\ObjectManager;
 use Gedmo\Exception\InvalidArgumentException;
@@ -372,12 +374,14 @@ class TranslatableListener extends MappedEventSubscriber
      * This has to be done in the preFlush because, when an entity has been loaded
      * in a different locale, no changes will be detected.
      *
+     * @param ManagerEventArgs $args
+     *
      * @return void
      */
     public function preFlush(EventArgs $args)
     {
         $ea = $this->getEventAdapter($args);
-        $om = $ea->getObjectManager();
+        $om = $args->getObjectManager();
         $uow = $om->getUnitOfWork();
 
         foreach ($this->translationInDefaultLocale as $oid => $fields) {
@@ -409,12 +413,14 @@ class TranslatableListener extends MappedEventSubscriber
      * Looks for translatable objects being inserted or updated
      * for further processing
      *
+     * @param ManagerEventArgs $args
+     *
      * @return void
      */
     public function onFlush(EventArgs $args)
     {
         $ea = $this->getEventAdapter($args);
-        $om = $ea->getObjectManager();
+        $om = $args->getObjectManager();
         $uow = $om->getUnitOfWork();
         // check all scheduled inserts for Translatable objects
         foreach ($ea->getScheduledObjectInsertions($uow) as $object) {
@@ -449,13 +455,15 @@ class TranslatableListener extends MappedEventSubscriber
      * Checks for inserted object to update their translation
      * foreign keys
      *
+     * @param LifecycleEventArgs $args
+     *
      * @return void
      */
     public function postPersist(EventArgs $args)
     {
         $ea = $this->getEventAdapter($args);
-        $om = $ea->getObjectManager();
-        $object = $ea->getObject();
+        $om = $args->getObjectManager();
+        $object = $args->getObject();
         $meta = $om->getClassMetadata(get_class($object));
         // check if entity is tracked by translatable and without foreign key
         if ($this->getConfiguration($om, $meta->getName()) && [] !== $this->pendingTranslationInserts) {
@@ -482,13 +490,15 @@ class TranslatableListener extends MappedEventSubscriber
      * After object is loaded, listener updates the translations
      * by currently used locale
      *
+     * @param ManagerEventArgs $args
+     *
      * @return void
      */
     public function postLoad(EventArgs $args)
     {
         $ea = $this->getEventAdapter($args);
-        $om = $ea->getObjectManager();
-        $object = $ea->getObject();
+        $om = $args->getObjectManager();
+        $object = $args->getObject();
         $meta = $om->getClassMetadata(get_class($object));
         $config = $this->getConfiguration($om, $meta->getName());
         $locale = $this->defaultLocale;

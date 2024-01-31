@@ -11,7 +11,9 @@ namespace Gedmo\Loggable;
 
 use Doctrine\Common\EventArgs;
 use Doctrine\ORM\Mapping\ClassMetadata as ORMClassMetadata;
+use Doctrine\Persistence\Event\LifecycleEventArgs;
 use Doctrine\Persistence\Event\LoadClassMetadataEventArgs;
+use Doctrine\Persistence\Event\ManagerEventArgs;
 use Doctrine\Persistence\Mapping\ClassMetadata;
 use Doctrine\Persistence\ObjectManager;
 use Gedmo\Exception\InvalidArgumentException;
@@ -140,13 +142,15 @@ class LoggableListener extends MappedEventSubscriber
      * Checks for inserted object to update its logEntry
      * foreign key
      *
+     * @param LifecycleEventArgs $args
+     *
      * @return void
      */
     public function postPersist(EventArgs $args)
     {
         $ea = $this->getEventAdapter($args);
-        $object = $ea->getObject();
-        $om = $ea->getObjectManager();
+        $object = $args->getObject();
+        $om = $args->getObjectManager();
         $oid = spl_object_id($object);
         $uow = $om->getUnitOfWork();
         if ($this->pendingLogEntryInserts && array_key_exists($oid, $this->pendingLogEntryInserts)) {
@@ -187,12 +191,14 @@ class LoggableListener extends MappedEventSubscriber
      * Looks for loggable objects being inserted or updated
      * for further processing
      *
+     * @param ManagerEventArgs $eventArgs
+     *
      * @return void
      */
     public function onFlush(EventArgs $eventArgs)
     {
         $ea = $this->getEventAdapter($eventArgs);
-        $om = $ea->getObjectManager();
+        $om = $eventArgs->getObjectManager();
         $uow = $om->getUnitOfWork();
 
         foreach ($ea->getScheduledObjectInsertions($uow) as $object) {

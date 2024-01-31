@@ -12,7 +12,9 @@ namespace Gedmo\Sortable;
 use Doctrine\Common\Comparable;
 use Doctrine\Common\EventArgs;
 use Doctrine\Common\Util\ClassUtils;
+use Doctrine\Persistence\Event\LifecycleEventArgs;
 use Doctrine\Persistence\Event\LoadClassMetadataEventArgs;
+use Doctrine\Persistence\Event\ManagerEventArgs;
 use Doctrine\Persistence\Mapping\ClassMetadata;
 use Doctrine\Persistence\ObjectManager;
 use Gedmo\Mapping\MappedEventSubscriber;
@@ -93,8 +95,7 @@ class SortableListener extends MappedEventSubscriber
      */
     public function loadClassMetadata(EventArgs $args)
     {
-        $ea = $this->getEventAdapter($args);
-        $this->loadMetadataForObjectClass($ea->getObjectManager(), $args->getClassMetadata());
+        $this->loadMetadataForObjectClass($args->getObjectManager(), $args->getClassMetadata());
     }
 
     /**
@@ -107,6 +108,8 @@ class SortableListener extends MappedEventSubscriber
      * The synchronization of the objects in memory is done in postFlush. This
      * ensures that the positions have been successfully persisted to database.
      *
+     * @param ManagerEventArgs $args
+     *
      * @return void
      */
     public function onFlush(EventArgs $args)
@@ -114,7 +117,7 @@ class SortableListener extends MappedEventSubscriber
         $this->persistenceNeeded = true;
 
         $ea = $this->getEventAdapter($args);
-        $om = $ea->getObjectManager();
+        $om = $args->getObjectManager();
         $uow = $om->getUnitOfWork();
 
         // process all objects being deleted
@@ -151,13 +154,15 @@ class SortableListener extends MappedEventSubscriber
     /**
      * Update maxPositions as needed
      *
+     * @param LifecycleEventArgs $args
+     *
      * @return void
      */
     public function prePersist(EventArgs $args)
     {
         $ea = $this->getEventAdapter($args);
-        $om = $ea->getObjectManager();
-        $object = $ea->getObject();
+        $om = $args->getObjectManager();
+        $object = $args->getObject();
         $meta = $om->getClassMetadata(get_class($object));
 
         if ($config = $this->getConfiguration($om, $meta->getName())) {
@@ -175,6 +180,8 @@ class SortableListener extends MappedEventSubscriber
     }
 
     /**
+     * @param LifecycleEventArgs $args
+     *
      * @return void
      */
     public function postPersist(EventArgs $args)
@@ -185,6 +192,8 @@ class SortableListener extends MappedEventSubscriber
     }
 
     /**
+     * @param LifecycleEventArgs $args
+     *
      * @return void
      */
     public function preUpdate(EventArgs $args)
@@ -195,6 +204,7 @@ class SortableListener extends MappedEventSubscriber
     }
 
     /**
+     * @param LifecycleEventArgs $args
      * @return void
      */
     public function postRemove(EventArgs $args)
@@ -207,12 +217,14 @@ class SortableListener extends MappedEventSubscriber
     /**
      * Sync objects in memory
      *
+     * @param ManagerEventArgs $args
+     *
      * @return void
      */
     public function postFlush(EventArgs $args)
     {
         $ea = $this->getEventAdapter($args);
-        $em = $ea->getObjectManager();
+        $em = $args->getObjectManager();
 
         $updatedObjects = [];
 

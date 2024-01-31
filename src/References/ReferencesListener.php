@@ -11,6 +11,7 @@ namespace Gedmo\References;
 
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\EventArgs;
+use Doctrine\Persistence\Event\LifecycleEventArgs;
 use Doctrine\Persistence\Event\LoadClassMetadataEventArgs;
 use Doctrine\Persistence\Mapping\ClassMetadata;
 use Doctrine\Persistence\ObjectManager;
@@ -74,13 +75,15 @@ class ReferencesListener extends MappedEventSubscriber
     }
 
     /**
+     * @param LifecycleEventArgs $eventArgs
+     *
      * @return void
      */
     public function postLoad(EventArgs $eventArgs)
     {
         $ea = $this->getEventAdapter($eventArgs);
-        $om = $ea->getObjectManager();
-        $object = $ea->getObject();
+        $om = $eventArgs->getObjectManager();
+        $object = $eventArgs->getObject();
         $meta = $om->getClassMetadata(get_class($object));
         $config = $this->getConfiguration($om, $meta->getName());
 
@@ -140,6 +143,8 @@ class ReferencesListener extends MappedEventSubscriber
     }
 
     /**
+     * @param LifecycleEventArgs $eventArgs
+     *
      * @return void
      */
     public function prePersist(EventArgs $eventArgs)
@@ -148,6 +153,8 @@ class ReferencesListener extends MappedEventSubscriber
     }
 
     /**
+     * @param LifecycleEventArgs $eventArgs
+     *
      * @return void
      */
     public function preUpdate(EventArgs $eventArgs)
@@ -190,13 +197,15 @@ class ReferencesListener extends MappedEventSubscriber
     }
 
     /**
+     * @param LifecycleEventArgs $eventArgs
+     *
      * @return void
      */
     public function updateManyEmbedReferences(EventArgs $eventArgs)
     {
         $ea = $this->getEventAdapter($eventArgs);
-        $om = $ea->getObjectManager();
-        $object = $ea->getObject();
+        $om = $eventArgs->getObjectManager();
+        $object = $eventArgs->getObject();
         $meta = $om->getClassMetadata(get_class($object));
         $config = $this->getConfiguration($om, $meta->getName());
 
@@ -237,11 +246,14 @@ class ReferencesListener extends MappedEventSubscriber
         return __NAMESPACE__;
     }
 
+    /**
+     * @param LifecycleEventArgs $eventArgs
+     */
     private function updateReferences(EventArgs $eventArgs): void
     {
         $ea = $this->getEventAdapter($eventArgs);
-        $om = $ea->getObjectManager();
-        $object = $ea->getObject();
+        $om = $eventArgs->getObjectManager();
+        $object = $eventArgs->getObject();
         $meta = $om->getClassMetadata(get_class($object));
         $config = $this->getConfiguration($om, $meta->getName());
 

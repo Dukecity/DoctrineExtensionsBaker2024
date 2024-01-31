@@ -10,7 +10,9 @@
 namespace Gedmo\Sluggable;
 
 use Doctrine\Common\EventArgs;
+use Doctrine\Persistence\Event\LifecycleEventArgs;
 use Doctrine\Persistence\Event\LoadClassMetadataEventArgs;
+use Doctrine\Persistence\Event\ManagerEventArgs;
 use Doctrine\Persistence\Mapping\ClassMetadata;
 use Doctrine\Persistence\ObjectManager;
 use Gedmo\Exception\InvalidArgumentException;
@@ -239,13 +241,14 @@ class SluggableListener extends MappedEventSubscriber
     /**
      * Allows identifier fields to be slugged as usual
      *
+     * @param LifecycleEventArgs $args
+     *
      * @return void
      */
     public function prePersist(EventArgs $args)
     {
-        $ea = $this->getEventAdapter($args);
-        $om = $ea->getObjectManager();
-        $object = $ea->getObject();
+        $om = $args->getObjectManager();
+        $object = $args->getObject();
         $meta = $om->getClassMetadata(get_class($object));
 
         if ($config = $this->getConfiguration($om, $meta->getName())) {
@@ -261,13 +264,15 @@ class SluggableListener extends MappedEventSubscriber
      * Generate slug on objects being updated during flush
      * if they require changing
      *
+     * @param ManagerEventArgs $args
+     *
      * @return void
      */
     public function onFlush(EventArgs $args)
     {
         $this->persisted = [];
         $ea = $this->getEventAdapter($args);
-        $om = $ea->getObjectManager();
+        $om = $args->getObjectManager();
         $uow = $om->getUnitOfWork();
 
         $this->manageFiltersBeforeGeneration($om);

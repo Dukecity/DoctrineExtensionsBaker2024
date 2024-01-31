@@ -12,7 +12,9 @@ namespace Gedmo\Tree;
 use Doctrine\Common\EventArgs;
 use Doctrine\ODM\MongoDB\DocumentManager;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\Persistence\Event\LifecycleEventArgs;
 use Doctrine\Persistence\Event\LoadClassMetadataEventArgs;
+use Doctrine\Persistence\Event\ManagerEventArgs;
 use Doctrine\Persistence\Mapping\ClassMetadata;
 use Doctrine\Persistence\ObjectManager;
 use Gedmo\Exception\InvalidArgumentException;
@@ -140,12 +142,14 @@ class TreeListener extends MappedEventSubscriber
      * Looks for Tree objects being updated
      * for further processing
      *
+     * @param ManagerEventArgs $args
+     *
      * @return void
      */
     public function onFlush(EventArgs $args)
     {
         $ea = $this->getEventAdapter($args);
-        $om = $ea->getObjectManager();
+        $om = $args->getObjectManager();
         $uow = $om->getUnitOfWork();
 
         // check all scheduled updates for TreeNodes
@@ -182,13 +186,14 @@ class TreeListener extends MappedEventSubscriber
     /**
      * Updates tree on Node removal
      *
+     * @param LifecycleEventArgs $args
+     *
      * @return void
      */
     public function preRemove(EventArgs $args)
     {
-        $ea = $this->getEventAdapter($args);
-        $om = $ea->getObjectManager();
-        $object = $ea->getObject();
+        $om = $args->getObjectManager();
+        $object = $args->getObject();
         $meta = $om->getClassMetadata(get_class($object));
 
         if ($this->getConfiguration($om, $meta->getName())) {
@@ -199,13 +204,13 @@ class TreeListener extends MappedEventSubscriber
     /**
      * Checks for persisted Nodes
      *
+     * @param LifecycleEventArgs $args
      * @return void
      */
     public function prePersist(EventArgs $args)
     {
-        $ea = $this->getEventAdapter($args);
-        $om = $ea->getObjectManager();
-        $object = $ea->getObject();
+        $om = $args->getObjectManager();
+        $object = $args->getObject();
         $meta = $om->getClassMetadata(get_class($object));
 
         if ($this->getConfiguration($om, $meta->getName())) {
@@ -216,13 +221,14 @@ class TreeListener extends MappedEventSubscriber
     /**
      * Checks for updated Nodes
      *
+     * @param LifecycleEventArgs $args
+     *
      * @return void
      */
     public function preUpdate(EventArgs $args)
     {
-        $ea = $this->getEventAdapter($args);
-        $om = $ea->getObjectManager();
-        $object = $ea->getObject();
+        $om = $args->getObjectManager();
+        $object = $args->getObject();
         $meta = $om->getClassMetadata(get_class($object));
 
         if ($this->getConfiguration($om, $meta->getName())) {
@@ -234,13 +240,15 @@ class TreeListener extends MappedEventSubscriber
      * Checks for pending Nodes to fully synchronize
      * the tree
      *
+     * @param LifecycleEventArgs $args
+     *
      * @return void
      */
     public function postPersist(EventArgs $args)
     {
         $ea = $this->getEventAdapter($args);
-        $om = $ea->getObjectManager();
-        $object = $ea->getObject();
+        $om = $args->getObjectManager();
+        $object = $args->getObject();
         $meta = $om->getClassMetadata(get_class($object));
 
         if ($this->getConfiguration($om, $meta->getName())) {
@@ -252,13 +260,15 @@ class TreeListener extends MappedEventSubscriber
      * Checks for pending Nodes to fully synchronize
      * the tree
      *
+     * @param LifecycleEventArgs $args
+     *
      * @return void
      */
     public function postUpdate(EventArgs $args)
     {
         $ea = $this->getEventAdapter($args);
-        $om = $ea->getObjectManager();
-        $object = $ea->getObject();
+        $om = $args->getObjectManager();
+        $object = $args->getObject();
         $meta = $om->getClassMetadata(get_class($object));
 
         if ($this->getConfiguration($om, $meta->getName())) {
@@ -270,13 +280,15 @@ class TreeListener extends MappedEventSubscriber
      * Checks for pending Nodes to fully synchronize
      * the tree
      *
+     * @param LifecycleEventArgs $args
+     *
      * @return void
      */
     public function postRemove(EventArgs $args)
     {
         $ea = $this->getEventAdapter($args);
-        $om = $ea->getObjectManager();
-        $object = $ea->getObject();
+        $om = $args->getObjectManager();
+        $object = $args->getObject();
         $meta = $om->getClassMetadata(get_class($object));
 
         if ($this->getConfiguration($om, $meta->getName())) {
