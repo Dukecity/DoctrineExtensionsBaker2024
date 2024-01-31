@@ -19,6 +19,10 @@ use Doctrine\ODM\MongoDB\Mapping\ClassMetadata as DocumentClassMetadata;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Mapping\ClassMetadata as EntityClassMetadata;
 use Doctrine\ORM\Mapping\ClassMetadataInfo as LegacyEntityClassMetadata;
+use Doctrine\Persistence\Event\LifecycleEventArgs;
+use Doctrine\Persistence\Event\LoadClassMetadataEventArgs;
+use Doctrine\Persistence\Event\ManagerEventArgs;
+use Doctrine\Persistence\Event\OnClearEventArgs;
 use Doctrine\Persistence\Mapping\AbstractClassMetadataFactory;
 use Doctrine\Persistence\Mapping\ClassMetadata;
 use Doctrine\Persistence\ObjectManager;
@@ -73,7 +77,8 @@ abstract class MappedEventSubscriber implements EventSubscriber
     /**
      * List of event adapters used for this listener
      *
-     * @var array<string, AdapterInterface>
+     * @var array<int|string, AdapterInterface>
+     * @todo When the namespace pattern lookup is no longer supported, and PHP 8.0 is required, use a WeakMap
      */
     private array $adapters = [];
 
@@ -258,21 +263,75 @@ abstract class MappedEventSubscriber implements EventSubscriber
      */
     protected function getEventAdapter(EventArgs $args)
     {
-        $class = get_class($args);
-        if (preg_match('@Doctrine\\\([^\\\]+)@', $class, $m) && in_array($m[1], ['ODM', 'ORM'], true)) {
-            if (!isset($this->adapters[$m[1]])) {
-                $adapterClass = $this->getNamespace().'\\Mapping\\Event\\Adapter\\'.$m[1];
-                if (!\class_exists($adapterClass)) {
-                    $adapterClass = 'Gedmo\\Mapping\\Event\\Adapter\\'.$m[1];
-                }
-                $this->adapters[$m[1]] = new $adapterClass();
+        if ($args instanceof LifecycleEventArgs || $args instanceof LoadClassMetadataEventArgs || $args instanceof ManagerEventArgs || $args instanceof OnClearEventArgs) {
+            try {
+                return $this->getEventAdapterForObjectManager($args->getObjectManager());
+            } catch (InvalidArgumentException $exception) {
+                // Fall back to the deprecated behavior
             }
-            $this->adapters[$m[1]]->setEventArgs($args);
-
-            return $this->adapters[$m[1]];
         }
 
-        throw new InvalidArgumentException('Event mapper does not support event arg class: '.$class);
+        return $this->getEventAdapterByNamespaceMatch($args);
+    }
+
+    /**
+     * Get an event adapter to handle event specific
+     * methods for the given object manager
+     *
+     * @throws InvalidArgumentException if the object manager is not supported
+     */
+    private function getEventAdapterForObjectManager(ObjectManager $om): AdapterInterface
+    {
+        $id = spl_object_id($om);
+
+        if (isset($this->adapters[$id])) {
+            return $this->adapters[$id];
+        }
+
+        if ($om instanceof EntityManagerInterface) {
+            $type = 'ORM';
+        } else {
+            throw new InvalidArgumentException(sprintf('Event mapper does not support resolving an adapter for "%s".', get_class($om)));
+        }
+
+        /** @phpstan-var class-string<AdapterInterface> $adapterClass */
+        $adapterClass = $this->getNamespace().'\\Mapping\\Event\\Adapter\\'.$type;
+
+        if (!\class_exists($adapterClass)) {
+            $adapterClass = 'Gedmo\\Mapping\\Event\\Adapter\\'.$type;
+        }
+
+        return $this->adapters[$id] = new $adapterClass($om);
+    }
+
+    /**
+     * Get an event adapter to handle event specific
+     * methods, locating the event adapter based on
+     * the class name of the event object
+     *
+     * @throws InvalidArgumentException if event is not recognized
+     *
+     * @deprecated Locating an event adapter based on matching namespaces is deprecated and will not be supported in 4.0.
+     */
+    private function getEventAdapterByNamespaceMatch(EventArgs $args): AdapterInterface
+    {
+        $class = get_class($args);
+
+        if (!preg_match('@Doctrine\\\([^\\\]+)@', $class, $m) && in_array($m[1], ['ODM', 'ORM'], true)) {
+            throw new InvalidArgumentException('Event mapper does not support event arg class: '.$class);
+        }
+
+        if (!isset($this->adapters[$m[1]])) {
+            /** @phpstan-var class-string<AdapterInterface> $adapterClass */
+            $adapterClass = $this->getNamespace().'\\Mapping\\Event\\Adapter\\'.$m[1];
+            if (!\class_exists($adapterClass)) {
+                $adapterClass = 'Gedmo\\Mapping\\Event\\Adapter\\'.$m[1];
+            }
+            $this->adapters[$m[1]] = new $adapterClass();
+        }
+        $this->adapters[$m[1]]->setEventArgs($args);
+
+        return $this->adapters[$m[1]];
     }
 
     /**

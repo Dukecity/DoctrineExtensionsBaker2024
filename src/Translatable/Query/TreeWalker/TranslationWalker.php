@@ -309,8 +309,7 @@ class TranslationWalker extends SqlWalker
             return;
         }
         $em = $this->getEntityManager();
-        $ea = new TranslatableEventAdapter();
-        $ea->setEntityManager($em);
+        $ea = new TranslatableEventAdapter($em);
         $quoteStrategy = $em->getConfiguration()->getQuoteStrategy();
         $joinStrategy = $q->getHint(TranslatableListener::HINT_INNER_JOIN) ? 'INNER' : 'LEFT';
 

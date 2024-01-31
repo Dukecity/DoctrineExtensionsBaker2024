@@ -40,12 +40,13 @@ final class AttributeChangeTest extends BaseTestCaseORM
         parent::setUp();
 
         $this->listener = new TimestampableListenerStub();
-        $this->listener->eventAdapter = new EventAdapterORMStub();
 
         $evm = new EventManager();
         $evm->addEventSubscriber($this->listener);
 
         $this->getDefaultMockSqliteEntityManager($evm);
+
+        $this->listener->eventAdapter = new EventAdapterORMStub($this->em);
     }
 
     public function testChange(): void
